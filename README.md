@@ -1,64 +1,65 @@
-# Task 3: Predictive Customer Churn Classifier (Random Forest & XGBoost)
+# Task 4: NLP Sentiment Classification on Customer Reviews (TF-IDF)
 
-An end-to-end ensemble machine learning pipeline designed to solve class imbalance and optimize **ROC-AUC (`>80%`)** for customer attrition prediction on the **IBM Telco Customer Churn** dataset.
+An end-to-end Natural Language Processing (NLP) text classification pipeline that preprocesses raw customer product and movie reviews, extracts numerical **TF-IDF (`TfidfVectorizer(max_features=5000)`)** feature embeddings, benchmarks **Multinomial Naive Bayes (`MultinomialNB`)** and **Logistic Regression (`LogisticRegression`)** classifiers, and provides an interactive `predict_sentiment()` helper for live custom phrase inference.
 
 ---
 
 ## Technical Approach & Pipeline
-1. **Dataset Loading:** Loads `7,043` customer subscription records across `21` attributes from the IBM Telco Customer Churn dataset.
-2. **Data Cleaning (`TotalCharges`):** Converts `TotalCharges` from whitespace strings (`" "`) to numeric floats (`pd.to_numeric(..., errors="coerce")`), imputes the `11` missing records (corresponding to new `tenure = 0` customers) using median imputation, and removes the non-predictive `customerID` identifier.
-3. **Categorical Encoding & Feature Scaling:** Applies `OneHotEncoder(drop="first")` to categorical subscription attributes and `StandardScaler()` to continuous variables (`tenure`, `MonthlyCharges`, `TotalCharges`).
-4. **Class Imbalance Resolution (`SMOTE`):** Balances the training distribution (`73.6%` Retained vs. `26.4%` Churned) using **SMOTE** (*Synthetic Minority Over-sampling Technique*) to synthesize minority class examples (`4,142` Retained vs. `4,142` Churned).
-5. **Ensemble Training & 5-Fold Cross-Validation:** Trains **Random Forest (`RandomForestClassifier`)** and **XGBoost (`XGBClassifier`)** using 5-Fold Stratified Cross-Validation (`StratifiedKFold`).
-6. **Model Evaluation:** Benchmarks **ROC-AUC**, **Accuracy**, **Precision**, **Recall**, and **F1-Score**, and generates high-resolution plots for **ROC-AUC Curves**, **Confusion Matrices**, and **Top 10 Feature Importances**.
+1. **Corpus Ingestion:** Loads the customer sentiment review dataset (`data/sentiment_reviews.csv`, `1,201` total records comprising `600` positive, `600` negative, and `1` neutral starter record, alongside `data/sentiment_reviews_starter.csv`).
+2. **Text Preprocessing (`preprocess_text`):**
+   - Strips HTML markup tags (`<br />`, `<p>`, `<i>`, `<b>`) and URLs using regular expressions (`re.sub`).
+   - Converts text to lowercase and removes punctuation and numeric characters.
+   - Removes English stopwords while preserving negation words (`not`, `no`, `never`, `nothing`).
+   - Lemmatizes inflected tokens to their base root form (`exceeded -> exceed`, `damaged -> damage`, `working -> work`, `disappointed -> disappoint`).
+3. **TF-IDF Feature Extraction:** Converts cleaned text into numerical feature vectors using `TfidfVectorizer(max_features=5000, ngram_range=(1, 2))` on an 80/20 stratified train/test split (`960` train, `240` test samples).
+4. **Model Training & Benchmarking:** Trains `MultinomialNB` and `LogisticRegression` with 5-Fold Stratified Cross-Validation and evaluates **Test Accuracy, Precision, Recall, F1-Score, and ROC-AUC**.
+5. **Interactive Test Helper (`predict_sentiment`):** Provides a reusable function that cleans, vectorizes, and predicts sentiment polarity and confidence scores on live custom user input phrases.
 
 ---
 
 ## Folder Structure
 ```text
-Task_3_Customer_Churn_Classifier/
+Task_4_NLP_Sentiment_Classification/
 ├── data/
-│   └── Telco-Customer-Churn.csv               # IBM Telco Customer Churn dataset (7,043 rows)
+│   ├── sentiment_reviews.csv                    # Full benchmark review corpus (1,201 rows)
+│   └── sentiment_reviews_starter.csv            # Original 10-row starter file
 ├── outputs/
-│   ├── 1_roc_auc_curves.png                   # ROC-AUC comparison curve (>80% target)
-│   ├── 2_confusion_matrices.png               # Side-by-side confusion matrix heatmaps
-│   ├── 3_top10_feature_importances.png        # Top 10 feature importance bar charts
-│   └── churn_benchmark_metrics.csv            # Exported benchmark metrics table
-├── Telco_Customer_Churn_Classifier.ipynb      # Executed Jupyter Notebook with embedded charts
-├── churn_classification.py                    # Standalone well-commented Python script
-├── requirements.txt                           # Required Python dependencies
-└── README.md                                  # Task 3 documentation & benchmark report
+│   ├── 1_confusion_matrices.png                 # Side-by-side Confusion Matrix heatmaps
+│   ├── 2_roc_auc_and_metrics_benchmark.png      # ROC-AUC curves & metric bar chart comparison
+│   ├── 3_top_tfidf_sentiment_features.png       # Top 12 Positive vs. Negative TF-IDF terms
+│   └── sentiment_benchmark_metrics.csv          # Exported benchmark metrics table
+├── NLP_Sentiment_Classification.ipynb           # Executed Jupyter Notebook with embedded charts
+├── nlp_sentiment_classification.py              # Standalone well-commented Python script
+├── requirements.txt                             # Required Python dependencies
+└── README.md                                    # Task 4 documentation & benchmark report
 ```
 
 ---
 
 ## Model Benchmark Results (80/20 Stratified Test Split)
 
-| Model | 5-Fold CV ROC-AUC | Test ROC-AUC | Accuracy | Precision | Recall | F1-Score |
+| Model | 5-Fold CV Accuracy | Test Accuracy | Precision | Recall | F1-Score | ROC-AUC |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Random Forest (`RandomForestClassifier`)** | `0.9178` (91.78%) | **`0.8653` (86.53%)** | `0.7899` | `0.5729` | **`0.7690`** | `0.6566` |
-| **XGBoost (`XGBClassifier`)** | **`0.9355` (93.55%)** | **`0.8671` (86.71%)** | **`0.8119`** | **`0.6388`** | `0.6440` | **`0.6414`** |
-
-* Both ensemble classifiers comfortably exceed the **`>80%` ROC-AUC** benchmark requirement (`86.53%` for Random Forest and `86.71%` for XGBoost).
-* **Top Churn Drivers:** Customer `tenure`, `TotalCharges`, `MonthlyCharges`, `Contract_Two year`, `Contract_One year`, `InternetService_Fiber optic`, and `PaymentMethod_Electronic check` rank as the most influential predictors of customer attrition.
+| **Multinomial Naive Bayes (`MultinomialNB`)** | `0.9510` (95.10%) | **`0.9542` (95.42%)** | **`0.9580`** | `0.9500` | **`0.9540`** | `0.9830` (98.30%) |
+| **Logistic Regression (`LogisticRegression`)** | `0.9510` (95.10%) | `0.9458` (94.58%) | `0.9421` | `0.9500` | `0.9461` | **`0.9883` (98.83%)** |
 
 ---
 
 ## Generated Visualizations
 
-### 1. ROC-AUC Curve Comparison (`>80%` Target)
-![ROC-AUC Curves](outputs/1_roc_auc_curves.png)
+### 1. Confusion Matrix Heatmaps (`MultinomialNB` vs. `LogisticRegression`)
+![Confusion Matrices](outputs/1_confusion_matrices.png)
 
-### 2. Confusion Matrix Heatmaps
-![Confusion Matrices](outputs/2_confusion_matrices.png)
+### 2. ROC-AUC Curves & Classification Metric Benchmark
+![ROC-AUC and Metrics Benchmark](outputs/2_roc_auc_and_metrics_benchmark.png)
 
-### 3. Top 10 Most Influential Feature Importances
-![Top 10 Feature Importances](outputs/3_top10_feature_importances.png)
+### 3. Top 12 Positive vs. Negative TF-IDF Sentiment Features
+![Top TF-IDF Sentiment Features](outputs/3_top_tfidf_sentiment_features.png)
 
 ---
 
 ## How to Run Locally
 ```bash
 pip install -r requirements.txt
-python churn_classification.py
+python nlp_sentiment_classification.py
 ```
